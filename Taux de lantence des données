@@ -1,0 +1,85 @@
+import os
+import pandas as pd
+from datetime import datetime
+
+
+folder_path = r'chemin vers le dossier contenant les fichiers'
+
+def calculate_latency_in_hours(data, file_name):
+    latency_results = []
+    current_time = datetime.now()
+
+    # Vérification des colonnes contenant "date" ou "time"
+    for column in data.columns:
+        if 'date' in column.lower() or 'time' in column.lower():
+            try:
+                # Convertir la colonne en format datetime
+                data[column] = pd.to_datetime(data[column], errors='coerce')
+
+                # Supprimer les valeurs NaT (Not a Time) qui peuvent résulter d'une conversion échouée
+                valid_data = data[column].dropna()
+
+                if not valid_data.empty:
+                    # Calculer la latence en heures
+                    latency_hours = ((current_time - valid_data).dt.total_seconds()) / 3600
+
+                    # Calculer les statistiques de latence en heures
+                    avg_latency = latency_hours.mean()
+                    min_latency = latency_hours.min()
+                    max_latency = latency_hours.max()
+
+                    latency_results.append({
+                        'Fichier': file_name,
+                        'Colonne': column,
+                        'Latence moyenne (heures)': avg_latency,
+                        'Latence minimale (heures)': min_latency,
+                        'Latence maximale (heures)': max_latency
+                    })
+                else:
+                    latency_results.append({
+                        'Fichier': file_name,
+                        'Colonne': column,
+                        'Latence moyenne (heures)': 'Aucune donnée valide',
+                        'Latence minimale (heures)': 'Aucune donnée valide',
+                        'Latence maximale (heures)': 'Aucune donnée valide'
+                    })
+            except Exception as e:
+                latency_results.append({
+                    'Fichier': file_name,
+                    'Colonne': column,
+                    'Latence moyenne (heures)': f'Erreur: {str(e)}',
+                    'Latence minimale (heures)': f'Erreur: {str(e)}',
+                    'Latence maximale (heures)': f'Erreur: {str(e)}'
+                })
+
+    return latency_results
+
+# Fonction pour parcourir tous les fichiers CSV dans un dossier donné
+def analyze_latency_for_all_files(folder_path):
+    latency_report_hours = []
+    
+    # Parcourir tous les fichiers du dossier
+    for file_name in os.listdir(folder_path):
+        if file_name.endswith('.csv'):
+            file_path = os.path.join(folder_path, file_name)
+            try:
+                # Lire les données CSV
+                data = pd.read_csv(file_path)
+
+                # Appeler la fonction de calcul de latence pour ce fichier
+                latency_report_hours.extend(calculate_latency_in_hours(data, file_name))
+            except Exception as e:
+                latency_report_hours.append({
+                    'Fichier': file_name,
+                    'Colonne': 'N/A',
+                    'Latence moyenne (heures)': f'Erreur: {str(e)}',
+                    'Latence minimale (heures)': 'N/A',
+                    'Latence maximale (heures)': 'N/A'
+                })
+    
+    return pd.DataFrame(latency_report_hours)
+
+latency_hours_df = analyze_latency_for_all_files(folder_path)
+
+# Afficher le rapport à l'utilisateur
+print(latency_hours_df)  # Remplacez par la méthode d'affichage appropriée dans votre environnement
