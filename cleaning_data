@@ -1,0 +1,43 @@
+import pandas as pd
+import os
+
+
+rep_src = r"lien au dossier contenant les fichiers"  
+rep_sortie = os.path.join(rep_src, "bdd_nettoyees")  # Répertoire de sortie
+
+seuil = 0.8
+
+def nettoyer_csv(rep_src, rep_sortie, seuil):
+    os.makedirs(rep_sortie, exist_ok=True)
+    
+    for fichier in os.listdir(rep_src):
+        if fichier.endswith(".csv"):
+            chemin_fichier = os.path.join(rep_src, fichier)
+            
+            try:
+                # Charger les données
+                df = pd.read_csv(chemin_fichier)
+                
+                # On ne supprime pas les fichiers booléens
+                cols_bool = [col for col in df.columns if col.startswith('is')]
+                
+                #On regarde les colonnes avec plus de 80% de cellules = 0,vides ou avec des (not set) et on va les supprimer
+                element_suppr = df.apply(
+                    lambda col: ((col == 0) | (col == '(not set)') | (col.isnull())).sum()
+                )
+                cols_suppr = element_suppr[
+                    (element_suppr > seuil * len(df)) & (~element_suppr.index.isin(cols_bool))
+                ].index.tolist()
+                
+                df_nettoye = df.drop(columns=cols_suppr)
+                
+                chemin_sortie = os.path.join(rep_sortie, fichier)
+                df_nettoye.to_csv(chemin_sortie, index=False)
+                
+                print(f"Fichier nettoyé : {fichier} -> {chemin_sortie}")
+            
+            except Exception as e:
+                print(f"Erreur sur {fichier} : {e}")
+
+
+nettoyer_csv(rep_src, rep_sortie, seuil)
