@@ -1,0 +1,56 @@
+import pandas as pd
+import os
+
+rep_src = r"chemin au dossier à analyser"
+
+def verifier_colonnes_id(rep_src):
+    resultats = {}
+
+    for fichier in os.listdir(rep_src):
+        if fichier.endswith(".csv"):  # On ne cherche que les fichiers en CSV et on le stocke dans une variable
+            chemin_fichier = os.path.join(rep_src, fichier)
+
+
+            # s'il y'a bien des fichiers csv dans le dossier on exécute le programme ci dessous
+            try:
+                df = pd.read_csv(chemin_fichier)
+                
+                # Filtrer les colonnes contenant "id" dans leur nom
+                cols_id = [col for col in df.columns if 'id' in col.lower()]
+                
+                problemes = {}
+
+                #on va vérifier si les colonnes id ont des problèmes
+                for col in cols_id:
+                    pb_col = []
+                    
+                    if df[col].isnull().any():
+                        pb_col.append("cellules vides")
+                    
+                    if (df[col] == 0).any():
+                        pb_col.append("valeurs égales à 0")
+          
+                    if df[col].duplicated().any():
+                        pb_col.append("doublons d'ID")
+                    
+                    if pb_col: 
+                        problemes[col] = pb_col
+                
+                if problemes:
+                    resultats[fichier] = problemes
+
+            except Exception as e:
+                print(f"Erreur lors du traitement de {fichier} : {e}")
+    
+    return resultats
+
+resultats = verifier_colonnes_id(rep_src)
+
+if resultats:
+    print("Fichiers avec des colonnes 'id' ayant des problèmes :")
+    for fichier, problemes in resultats.items():
+        print(f"{fichier} :")
+        for col, pb in problemes.items():
+            print(f"  {col} : {pb}")
+else:
+    print("Toutes les colonnes 'id' dans les fichiers CSV sont valides.")
