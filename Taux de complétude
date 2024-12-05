@@ -4,41 +4,33 @@ import pandas as pd
 chemin_dossier = 'chemin vers le dossier'
 
 def calculer_completude(chemin_fichier):
-
     try:
-
-        donnees = pd.read_csv(chemin_fichier)
-        valeurs_totales = donnees.size
-        donnees = donnees.replace([0, '', '(no set)'], pd.NA)
-        valeurs_non_manquantes = donnees.count().sum()
-        completude = 100 * (valeurs_non_manquantes / valeurs_totales) if valeurs_totales > 0 else 0
-        
+        df = pd.read_csv(chemin_fichier)
+        colonnes_a_exclure = [col for col in df.columns if col.startswith('is') and df[col].dtype == 'bool']
+        df_filtré = df.drop(columns=colonnes_a_exclure, errors='ignore')
+        total_valeurs = df_filtré.size
+        valeurs_manquantes = df_filtré.apply(lambda col: col.isin([None, "", 0])).sum().sum()
+        completude = 100 * (1 - valeurs_manquantes / total_valeurs) if total_valeurs > 0 else 0
         return completude
-
     except Exception as e:
         print(f"Erreur lors du traitement de {chemin_fichier}: {e}")
         return None
 
 def calculer_completude_pour_dossier(chemin_dossier):
     resultats = []
-    
     for fichier in os.listdir(chemin_dossier):
         if fichier.endswith('.csv'):
-            chemin_fichier = os.path.join(chemin_dossier,fichier)
+            chemin_fichier = os.path.join(chemin_dossier, fichier)
             completude = calculer_completude(chemin_fichier)
             resultats.append({
                 'Fichier': fichier,
                 'Complétude (%)': completude
             })
-    
     return pd.DataFrame(resultats)
-
 
 rapport_completude = calculer_completude_pour_dossier(chemin_dossier)
 
-
 print(rapport_completude)
-
 
 chemin_sortie = os.path.join(chemin_dossier, 'rapport_completude.csv')
 rapport_completude.to_csv(chemin_sortie, index=False)
