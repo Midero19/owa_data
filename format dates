@@ -1,0 +1,53 @@
+import csv
+import os
+from datetime import datetime
+
+dossier_bdd = "lien vers le dossier de la bdd"
+
+def verifier_dates(dates):
+    format_date = "%Y%m%d"
+    resultats = {}
+    count_invalide = 0
+
+    for date_str in dates:
+        try:
+            datetime.strptime(date_str, format_date)
+            resultats[date_str] = "Valide"
+        except ValueError:
+            resultats[date_str] = "Invalide"
+            count_invalide += 1
+
+    return resultats, count_invalide
+
+def lire_dates_depuis_csv(chemin_fichier):
+    dates = []
+    try:
+        with open(chemin_fichier, mode='r', newline='', encoding='utf-8') as file:
+            lecteur_csv = csv.DictReader(file)
+            for ligne in lecteur_csv:
+                if 'yyyymmdd' in ligne:
+                    dates.append(ligne['yyyymmdd'])
+    except FileNotFoundError:
+        print(f"Le fichier {chemin_fichier} est introuvable.")
+    return dates
+
+def verifier_dates_dans_dossier(dossier_bdd):
+    total_invalide = 0
+    fichiers_csv = [f for f in os.listdir(dossier_bdd) if f.endswith('.csv')]
+    
+    for fichier in fichiers_csv:
+        chemin_fichier = os.path.join(dossier_bdd, fichier)
+        print(f"Vérification des dates dans le fichier: {fichier}")
+        
+        dates_a_verifier = lire_dates_depuis_csv(chemin_fichier)
+        
+        resultats, count_invalide = verifier_dates(dates_a_verifier)
+        
+        for date, statut in resultats.items():
+            print(f"  Date: {date} - {statut}")
+        
+        total_invalide += count_invalide
+    
+    print(f"\nNombre total de dates invalides dans tous les fichiers: {total_invalide}")
+
+verifier_dates_dans_dossier(dossier_bdd)
