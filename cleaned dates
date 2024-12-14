@@ -1,0 +1,55 @@
+import csv
+import os
+from datetime import datetime, timedelta
+
+dossier_cleaned_bdd = "lien vers le dossier"
+
+def normaliser_date(date_str):
+    # Essayer différents formats de date possibles
+    formats_possibles = ["%Y%m%d", "%Y-%m-%d", "%d/%m/%Y", "%m/%d/%Y"]
+    
+    for format_date in formats_possibles:
+        try:
+            date_obj = datetime.strptime(date_str, format_date)
+            return date_obj.strftime("%Y%m%d")  # Retourner la date dans le format souhaité
+        except ValueError:
+            continue
+    
+    return None
+
+def traiter_fichiers_csv(dossier_cleaned_bdd):
+    fichiers_csv = [f for f in os.listdir(dossier_cleaned_bdd) if f.endswith('.csv')]
+
+    for fichier in fichiers_csv:
+        chemin_fichier = os.path.join(dossier_cleaned_bdd, fichier)
+        print(f"Traitement des dates dans le fichier: {fichier}")
+
+        with open(chemin_fichier, mode='r', newline='', encoding='utf-8') as file:
+            lecteur_csv = csv.DictReader(file)
+            lignes = list(lecteur_csv)
+
+        dates_corrigees = []
+
+        for i, ligne in enumerate(lignes):
+            if 'yyyymmdd' in ligne:
+                date_str = ligne['yyyymmdd'].strip()  # Enlever les espaces autour de la date
+                date_normalisee = normaliser_date(date_str)
+                
+                if date_normalisee is None:
+                    # Si la date est invalide, la remplacer par la date de la ligne précédente
+                    if i > 0 and 'yyyymmdd' in lignes[i - 1]:
+                        date_corrigee = lignes[i - 1]['yyyymmdd']  # Remplacer par la date précédente
+                        ligne['yyyymmdd'] = date_corrigee
+                    else:
+                        ligne['yyyymmdd'] = "00000000"  # Si pas de ligne précédente, mettre une valeur par défaut
+                else:
+                    ligne['yyyymmdd'] = date_normalisee  # Utiliser la date normalisée
+
+        with open(chemin_fichier, mode='w', newline='', encoding='utf-8') as file_out:
+            writer = csv.DictWriter(file_out, fieldnames=lecteur_csv.fieldnames)
+            writer.writeheader()
+            writer.writerows(lignes) 
+
+        print(f"Fichier {fichier} traité et sauvegardé.")
+
+traiter_fichiers_csv(dossier_cleaned_bdd)
